@@ -32,4 +32,6 @@
 | 3  | MV - Soft - Weighted        | W-MV-S       | Benchmark | None  |
 | 4  | MV - Hard - Weighted        | W-MV-H       | Benchmark | None  |
 | 5  | Stacking                    | Stack        | Benchmark | None  |
+| 6  | Early Fusion                | EF           | Benchmark | None  |
+| N  | Dynamic Uncertainty-based Selection | DUS  | Engineering Applications of Artificial Intelligence (2024) | None  |
 | N  | Class-specified DEL         | CP-DEL       | Knowledge-Based Systems (2025)| None | 
