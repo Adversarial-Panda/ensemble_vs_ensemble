@@ -5,6 +5,15 @@
 ![Alt text](https://github.com/Adversarial-Panda/ensemble_vs_ensemble/blob/main/images/ensemble_vs_ensemble_2.png) 
 
 
+### Datasets 🗃
+| Name        | Classes | 
+|-------------|---------|
+| ImageNet    | 1000    | 
+| CIFAR-100   | 100     | 
+| PAD-UFES-20 | 6       |  
+
+---  
+
 ### Ensemble Attacks ⚔️
 | Method   | Venue       | Year | Title                                                                 |
 |----------|------------|------|-----------------------------------------------------------------------|
