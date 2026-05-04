@@ -5,7 +5,7 @@
 ![Alt text](https://github.com/Adversarial-Panda/ensemble_vs_ensemble/blob/main/images/ensemble_vs_ensemble_2.png) 
 
 
-### Ensemble Attacks 
+### Ensemble Attacks ⚔️
 | Method   | Venue       | Year | Title                                                                 |
 |----------|------------|------|-----------------------------------------------------------------------|
 | EnsAttack| ICLR       | 2017 | Delving into Transferable Adversarial Examples and Black-Box Attacks |
@@ -15,5 +15,5 @@
 | NAMEA    | AAAI       | 2026 | Boosting Adversarial Transferability via Ensemble Non-Attention      |
 
 
-### Ensemble Models 
+### Ensemble Models 🛡
 | Method   |
