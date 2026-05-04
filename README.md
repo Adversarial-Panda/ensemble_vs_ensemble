@@ -15,6 +15,12 @@
 | NAMEA    | AAAI       | 2026 | Boosting Adversarial Transferability via Ensemble Non-Attention      |
 
 ### Pool of Ensemble Attacks 
+| Surrogate Model | Type | Name on Timm              |
+|-----------------|------|---------------------------|
+| ResNet-18       | CNN  | resnet18                  |
+| Inception-V3    | CNN  | inception_v3              |
+| DeiT-Tiny       | ViT  | deit_tiny_patch16_224     |
+| ViT-Tiny        | ViT  | vit_tiny_patch16_224      |
 
 --- 
 
