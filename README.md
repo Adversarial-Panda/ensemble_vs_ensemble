@@ -11,6 +11,7 @@
 | ImageNet    | 1000    | 
 | CIFAR-100   | 100     | 
 | PAD-UFES-20 | 6       |  
+| MIMIC-IV    | 2       | 
 
 ---  
 
