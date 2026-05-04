@@ -25,4 +25,6 @@
 --- 
 
 ### Ensemble Models 🛡
-| Method   |
+| Method                      | 
+| Majority Voting (MV) - Soft | 
+| Majority Voting (MV) - Hard |  
