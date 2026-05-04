@@ -25,7 +25,10 @@
 --- 
 
 ### Ensemble Models 🛡
-| Method                      | 
-|-----------------------------|
-| Majority Voting (MV) - Soft | 
-| Majority Voting (MV) - Hard |  
+|No  | Method                      | Abbreviation | Source    | 
+|----|-----------------------------|--------------|-----------| 
+| 1  | Majority Voting (MV) - Soft | MV-S         | Benchmark | 
+| 2  | Majority Voting (MV) - Hard | MV-H         | Benchmark | 
+| 3  | MV - Soft - Weighted        | W-MV-S       | Benchmark | 
+| 4  | MV - Hard - Weighted        | W-MV-H       | Benchmark | 
+| 5  | Stacking                    | Stack        | Benchmark | 
