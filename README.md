@@ -16,7 +16,7 @@
 ---  
 
 ### Ensemble Attacks ⚔️
-| Method   | Venue       | Year | Title                                                                 |
+| Method   | Venue       | Year | Paper Title                                                          |
 |----------|------------|------|-----------------------------------------------------------------------|
 | Ens. Attack | ICLR       | 2017 | Delving into Transferable Adversarial Examples and Black-Box Attacks |
 | SVRE     | CVPR       | 2022 | Stochastic Variance Reduced Ensemble Adversarial Attack for Boosting the Adversarial Transferability |
@@ -31,6 +31,12 @@
 | Inception-V3    | CNN  | inception_v3              |
 | DeiT-Tiny       | ViT  | deit_tiny_patch16_224     |
 | ViT-Tiny        | ViT  | vit_tiny_patch16_224      |
+
+### Base Attacks 
+| Attack  | Venue     | Paper Title  | 
+|----------|----------|--------------|
+| MI-FGSM | CVPR 2018	| Boosting Adversarial Attacks with Momentum |  
+| PGD     | ICLR 2018	| Towards Deep Learning Models Resistant to Adversarial Attacks |  
 
 --- 
 
