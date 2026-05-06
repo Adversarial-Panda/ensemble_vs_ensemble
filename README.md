@@ -55,3 +55,26 @@
 | 10 | Dynamic Uncertainty-based Selection | DUS  | Engineering Applications of Artificial Intelligence (2024) | None  |
 | 11 | Class-specified DEL         | CP-DEL       | Knowledge-Based Systems (2025)| None | 
 
+### Base models (ImageNet-1000)
+| Target Model     | Type | Name on Timm                  |
+|------------------|------|-------------------------------|
+| RegNet-320       | CNN  | regnety_032                   |
+| DenseNet-201     | CNN  | densenet201                   |
+| VGG-19           | CNN  | vgg19                         |
+| DeiT-B           | ViT  | deit_base_patch16_224         |
+| Swin-B           | ViT  | swin_base_patch4_window7_224  |
+| MLP-Mixer-B      | MLP  | mixer_b16_224                 |
+| ConvMixer        | MLP  | convmixer_768_32              |
+| *ConvNeXt-V2-L   | CNN  | convnextv2_large              |
+
+### Base models (CIFAR-100)
+| Target Model        | Type | Name on Timm                  |
+|---------------------|------|-------------------------------|
+| BiT-ResNet-101      | CNN  | resnetv2_101x1_bitm           |
+| ResNet-152          | CNN  | resnet152                     |
+| RegNet-160          | CNN  | regnety_160                   |
+| ViT-B               | ViT  | vit_base_patch16_224          |
+| DeiT-B              | ViT  | deit_base_patch16_224         |
+| Swin-B              | ViT  | swin_base_patch4_window7_224  |
+| ConvMixer           | MLP  | convmixer_768_32              |
+| *ConvNeXt-V2-L      | CNN  | convnextv2_large              |
