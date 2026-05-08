@@ -59,13 +59,13 @@
 | Target Model     | Type | Name on Timm                  |
 |------------------|------|-------------------------------|
 | RegNet-320       | CNN  | regnety_032                   |
-| DenseNet-201     | CNN  | densenet201                   |
 | VGG-19           | CNN  | vgg19                         |
+| *ConvNeXt-V2-L   | CNN  | convnextv2_large              |
 | DeiT-B           | ViT  | deit_base_patch16_224         |
 | Swin-B           | ViT  | swin_base_patch4_window7_224  |
 | MLP-Mixer-B      | MLP  | mixer_b16_224                 |
 | ConvMixer        | MLP  | convmixer_768_32              |
-| *ConvNeXt-V2-L   | CNN  | convnextv2_large              |
+
 
 ### Base models (CIFAR-100)
 | Target Model        | Type | Name on Timm                  |
