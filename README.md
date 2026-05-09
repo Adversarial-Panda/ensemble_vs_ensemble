@@ -77,3 +77,8 @@
 | Swin-B              | ViT  | swin_base_patch4_window7_224  |
 | ConvMixer           | MLP  | convmixer_768_32              |
 | *ConvNeXt-V2-L      | CNN  | convnextv2_large              |
+
+---
+#### Useful Sources 
+https://github.com/jindonggu/awesome_adversarial_transferability 
+
