@@ -48,12 +48,11 @@
 | 3  | MV - Soft - Weighted        | W-MV-S       | Benchmark | None  |
 | 4  | MV - Hard - Weighted        | W-MV-H       | Benchmark | None  |
 | 5  | Stacking                    | Stack        | Benchmark | None  |
-| 6  | Early Fusion                | EF           | Benchmark | None  |
-| 7  | k-Nearest Output Profiles   | KNOP         | DES       | Decision space |
-| 8  | k-Nearest Oracle-Eliminate  | KNORAE       | DES       | Feature space | 
-| 9  | k-Nearest Oracle Union      | KNORAU       | DES       | Feature space | 
-| 10 | Dynamic Uncertainty-based Selection | DUS  | Engineering Applications of Artificial Intelligence (2024) | None  |
-| 11 | Class-specified DEL         | CP-DEL       | Knowledge-Based Systems (2025)| None | 
+| 6  | k-Nearest Output Profiles   | KNOP         | DES       | Decision space |
+| 7  | k-Nearest Oracle-Eliminate  | KNORAE       | DES       | Feature space | 
+| 8  | k-Nearest Oracle Union      | KNORAU       | DES       | Feature space | 
+| 9  | Dynamic Uncertainty-based Selection | DUS  | Engineering Applications of Artificial Intelligence (2024) | None  |
+| 10 | Class-specified DEL         | CP-DEL       | Knowledge-Based Systems (2025)| None | 
 
 ### Base models (ImageNet-1000)
 | Target Model     | Type | Name on Timm                  |
