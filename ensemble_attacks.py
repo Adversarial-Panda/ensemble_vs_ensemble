@@ -831,39 +831,40 @@ def PGD_SMER(surrogate_models, images, labels, args, num_iter=10):
 ######################### NAMEA ############################
 ############################################################
 
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
 class GradCAM:
-    """
-    Exact-style GradCAM implementation for NAMEA.
-
-    CNN:
-        use final conv block
-
-    ViT/DeiT:
-        use pre-attention norm layer from final transformer block
-    """
 
     def __init__(self, model, target_layer):
+
         self.model = model
         self.target_layer = target_layer
 
         self.activations = None
         self.gradients = None
 
-        self.forward_handle = self.target_layer.register_forward_hook(
+        self.forward_handle = target_layer.register_forward_hook(
             self.forward_hook
         )
 
-        self.backward_handle = self.target_layer.register_full_backward_hook(
+        self.backward_handle = target_layer.register_full_backward_hook(
             self.backward_hook
         )
 
-    def forward_hook(self, module, input, output):
-        self.activations = output
+    def forward_hook(self, module, inp, out):
 
-    def backward_hook(self, module, grad_input, grad_output):
-        self.gradients = grad_output[0]
+        self.activations = out
+
+    def backward_hook(self, module, grad_in, grad_out):
+
+        self.gradients = grad_out[0]
 
     def remove(self):
+
         self.forward_handle.remove()
         self.backward_handle.remove()
 
@@ -871,7 +872,10 @@ class GradCAM:
 
         logits = self.model(x)
 
-        score = logits.gather(1, y.view(-1, 1)).sum()
+        score = logits.gather(
+            1,
+            y.view(-1, 1)
+        ).sum()
 
         self.model.zero_grad()
 
@@ -880,13 +884,10 @@ class GradCAM:
         acts = self.activations
         grads = self.gradients
 
-
         if acts.ndim == 3:
 
-            # [B, Tokens, C]
             B, T, C = acts.shape
 
-            # remove cls token
             acts = acts[:, 1:, :]
             grads = grads[:, 1:, :]
 
@@ -895,12 +896,18 @@ class GradCAM:
             H = W = int(HW ** 0.5)
 
             acts = acts.permute(0, 2, 1).reshape(B, C, H, W)
+
             grads = grads.permute(0, 2, 1).reshape(B, C, H, W)
 
+        weights = grads.mean(
+            dim=(2, 3),
+            keepdim=True
+        )
 
-        weights = grads.mean(dim=(2, 3), keepdim=True)
-
-        cam = (weights * acts).sum(dim=1, keepdim=True)
+        cam = (weights * acts).sum(
+            dim=1,
+            keepdim=True
+        )
 
         cam = F.relu(cam)
 
@@ -911,13 +918,23 @@ class GradCAM:
             align_corners=False
         )
 
-        cam_min = cam.amin(dim=(2, 3), keepdim=True)
-        cam_max = cam.amax(dim=(2, 3), keepdim=True)
+        cam_min = cam.amin(
+            dim=(2, 3),
+            keepdim=True
+        )
 
-        cam = (cam - cam_min) / (cam_max - cam_min + 1e-8)
+        cam_max = cam.amax(
+            dim=(2, 3),
+            keepdim=True
+        )
+
+        cam = (
+            cam - cam_min
+        ) / (
+            cam_max - cam_min + 1e-8
+        )
 
         return cam.detach()
-
 
 
 class NAMEA_Base:
@@ -927,15 +944,16 @@ class NAMEA_Base:
         models,
         target_layers,
         eps=8/255,
-        alpha=0.8/255,
-        steps=10,
-        inner_steps=16,
-        threshold=0.6,
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        alpha=1/255,
+        steps=20,
+        inner_steps=4,
+        threshold=0.35,
+        noise_std=0.1,
+        random_start=True,
+        device=torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
     ):
-
-        assert len(models) >= 2
-        assert len(models) == len(target_layers)
 
         self.models = models
         self.target_layers = target_layers
@@ -949,12 +967,14 @@ class NAMEA_Base:
         self.inner_steps = inner_steps
 
         self.threshold = threshold
+        self.noise_std = noise_std
+
+        self.random_start = random_start
 
         self.num_models = len(models)
 
         for model in self.models:
             model.eval()
-
 
         self.cam_extractors = []
 
@@ -964,110 +984,90 @@ class NAMEA_Base:
                 GradCAM(model, layer)
             )
 
-
     def project(self, x, adv):
 
         delta = torch.clamp(
             adv - x,
-            min=-self.eps,
-            max=self.eps
+            -self.eps,
+            self.eps
         )
 
         adv = torch.clamp(
             x + delta,
-            min=0.0,
-            max=1.0
+            0.0,
+            1.0
         )
 
         return adv.detach()
 
-    
-    def get_attention_mask(self, idx, x, y):
+    def get_ensemble_attention(self, x, y):
 
-        cam = self.cam_extractors[idx](x, y)
+        masks = []
 
-        mask = (cam >= self.threshold).float()
+        for idx in range(self.num_models):
 
-        return mask
+            cam = self.cam_extractors[idx](x, y)
 
+            mask = (
+                cam >= self.threshold
+            ).float()
 
-    def cnn_layer_scaling(self, grad):
+            masks.append(mask)
 
-        B, C, H, W = grad.shape
+        masks = torch.stack(masks)
 
-        yy, xx = torch.meshgrid(
-            torch.arange(H, device=grad.device),
-            torch.arange(W, device=grad.device),
-            indexing='ij'
+        mask = masks.mean(dim=0)
+
+        return mask.detach()
+
+    def normalize_grad(self, grad):
+
+        return grad / (
+            grad.abs().mean(
+                dim=(1, 2, 3),
+                keepdim=True
+            ) + 1e-12
         )
 
-        center_y = H // 2
-        center_x = W // 2
+    def apply_gso(self, grad):
 
-        dist = ((yy - center_y) ** 2 + (xx - center_x) ** 2).float()
-
-        dist = dist / dist.max()
-
-        scale = 1.0 + 0.5 * (1.0 - dist)
-
-        scale = scale.unsqueeze(0).unsqueeze(0)
-
-        return grad * scale
-
-
-    def vit_channel_scaling(self, grad):
-
-        B, C, H, W = grad.shape
-
-        g = grad.view(B, C, -1)
-
-        mean = g.abs().mean(dim=2, keepdim=True)
-
-        std = g.abs().std(dim=2, keepdim=True) + 1e-8
-
-        scale = torch.tanh(
-            torch.abs((g.abs() - mean) / std)
+        grad_std = grad.std(
+            dim=(2, 3),
+            keepdim=True
         )
 
-        g = g * scale
+        grad = grad * (
+            1.0 + grad_std
+        )
 
-        return g.view(B, C, H, W)
-
-    
-    def apply_gso(self, grad, model):
-
-        name = model.__class__.__name__.lower()
-
-        if (
-            "vit" in name or
-            "deit" in name or
-            "swin" in name or
-            "pit" in name or
-            "cait" in name or
-            "levit" in name or
-            "visformer" in name or
-            "convit" in name or
-            "tnt" in name
-        ):
-
-            return self.vit_channel_scaling(grad)
-
-        return self.cnn_layer_scaling(grad)
-
+        return grad
 
     def compute_namea_gradient(self, adv, x, y):
 
         loss_fn = nn.CrossEntropyLoss()
 
-        perm = torch.randperm(self.num_models)
+        perm = torch.randperm(
+            self.num_models
+        )
+
+        ensemble_attention = self.get_ensemble_attention(
+            adv.detach(),
+            y
+        )
+
+        non_attention = (
+            1.0 - ensemble_attention
+        )
 
         x_tr = adv.clone().detach()
 
-        g_tr = None
+        g_tr = torch.zeros_like(x)
 
         for k in range(self.inner_steps):
 
-            idx = perm[k % self.num_models]
+            idx = perm[
+                k % self.num_models
+            ]
 
             model = self.models[idx]
 
@@ -1075,49 +1075,57 @@ class NAMEA_Base:
 
             logits = model(x_tr)
 
-            loss = loss_fn(logits, y)
-
-            grad = torch.autograd.grad(
-                loss,
-                x_tr,
-                retain_graph=False,
-                create_graph=False
-            )[0]
-
-            g_tr = grad.detach()
-
-            x_tr = x_tr + self.alpha * grad.sign()
-
-            x_tr = self.project(x, x_tr)
-
-
-        x_te = adv.clone().detach()
-
-        g_te = None
-
-        final_non_attention = None
-
-        for k in range(self.inner_steps):
-
-            idx = perm[k % self.num_models]
-
-            model = self.models[idx]
-
-            attention_mask = self.get_attention_mask(
-                idx,
-                x_tr.detach(),
+            loss = loss_fn(
+                logits,
                 y
             )
 
-            non_attention = 1.0 - attention_mask
+            grad = torch.autograd.grad(
+                loss,
+                x_tr
+            )[0]
 
-            final_non_attention = non_attention
+            grad = self.normalize_grad(
+                grad
+            )
 
-            noise = torch.randn_like(x_te)
+            g_tr += grad.detach()
+
+            x_tr = x_tr + (
+                self.alpha *
+                grad.sign()
+            )
+
+            x_tr = self.project(
+                x,
+                x_tr
+            )
+
+        x_te = adv.clone().detach()
+
+        g_te = torch.zeros_like(x)
+
+        for k in range(self.inner_steps):
+
+            idx = perm[
+                k % self.num_models
+            ]
+
+            model = self.models[idx]
+
+            noise = (
+                torch.randn_like(x_te)
+                * self.noise_std
+            )
+
+            masked_region = (
+                0.7 * x_te +
+                0.3 * noise
+            )
 
             x_masked = (
                 non_attention * x_te +
-                attention_mask * noise
+                ensemble_attention * masked_region
             )
 
             x_masked = x_masked.detach()
@@ -1126,32 +1134,50 @@ class NAMEA_Base:
 
             logits = model(x_masked)
 
-            loss = loss_fn(logits, y)
+            loss = loss_fn(
+                logits,
+                y
+            )
 
             grad = torch.autograd.grad(
                 loss,
-                x_masked,
-                retain_graph=False,
-                create_graph=False
+                x_masked
             )[0]
 
-            grad = self.apply_gso(grad, model)
+            grad = self.apply_gso(
+                grad
+            )
 
-            g_te = grad.detach()
+            grad = self.normalize_grad(
+                grad
+            )
 
-            x_te = x_te + self.alpha * grad.sign()
+            g_te += grad.detach()
 
-            x_te = self.project(x, x_te)
+            x_te = x_te + (
+                self.alpha *
+                grad.sign()
+            )
 
-        final_grad = g_tr + g_te * final_non_attention
+            x_te = self.project(
+                x,
+                x_te
+            )
+
+        final_grad = (
+            0.5 * g_tr +
+            1.5 * g_te * non_attention
+        )
+
+        final_grad = self.normalize_grad(
+            final_grad
+        )
 
         return final_grad
-
 
     def __call__(self, x, y):
 
         return self.attack(x, y)
-
 
 
 class NAMEA_MIFGSM(NAMEA_Base):
@@ -1161,12 +1187,16 @@ class NAMEA_MIFGSM(NAMEA_Base):
         models,
         target_layers,
         eps=8/255,
-        alpha=0.8/255,
-        steps=10,
-        inner_steps=16,
+        alpha=1/255,
+        steps=20,
+        inner_steps=4,
         decay=1.0,
-        threshold=0.6,
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        threshold=0.35,
+        noise_std=0.1,
+        random_start=True,
+        device=torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
     ):
 
         super().__init__(
@@ -1177,6 +1207,8 @@ class NAMEA_MIFGSM(NAMEA_Base):
             steps=steps,
             inner_steps=inner_steps,
             threshold=threshold,
+            noise_std=noise_std,
+            random_start=random_start,
             device=device
         )
 
@@ -1184,108 +1216,110 @@ class NAMEA_MIFGSM(NAMEA_Base):
 
     def attack(self, x, y):
 
-        x = x.detach().to(self.device)
-
-        y = y.detach().to(self.device)
-
-        adv = x.clone().detach()
-
-        momentum = torch.zeros_like(x)
-
-        for t in range(self.steps):
-
-            final_grad = self.compute_namea_gradient(
-                adv,
-                x,
-                y
-            )
-
-            final_grad = final_grad / (
-                final_grad.abs().mean(
-                    dim=(1, 2, 3),
-                    keepdim=True
-                ) + 1e-12
-            )
-
-            final_grad = final_grad + self.decay * momentum
-
-            momentum = final_grad
-
-            adv = adv + self.alpha * final_grad.sign()
-
-            adv = self.project(x, adv)
-
-        return adv.detach()
-
-
-class NAMEA_PGD(NAMEA_Base):
-
-    def __init__(
-        self,
-        models,
-        target_layers,
-        eps=8/255,
-        alpha=0.8/255,
-        steps=10,
-        inner_steps=16,
-        threshold=0.6,
-        random_start=True,
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    ):
-
-        super().__init__(
-            models=models,
-            target_layers=target_layers,
-            eps=eps,
-            alpha=alpha,
-            steps=steps,
-            inner_steps=inner_steps,
-            threshold=threshold,
-            device=device
+        x = x.detach().to(
+            self.device
         )
 
-        self.random_start = random_start
-
-    def attack(self, x, y):
-
-        x = x.detach().to(self.device)
-
-        y = y.detach().to(self.device)
+        y = y.detach().to(
+            self.device
+        )
 
         if self.random_start:
 
-            adv = x + torch.empty_like(x).uniform_(
+            adv = x + torch.empty_like(
+                x
+            ).uniform_(
                 -self.eps,
                 self.eps
             )
 
             adv = torch.clamp(
                 adv,
-                min=0.0,
-                max=1.0
+                0.0,
+                1.0
             )
 
         else:
 
             adv = x.clone().detach()
 
-        for t in range(self.steps):
+        momentum = torch.zeros_like(
+            x
+        )
 
-            final_grad = self.compute_namea_gradient(
+        for _ in range(self.steps):
+
+            grad = self.compute_namea_gradient(
                 adv,
                 x,
                 y
             )
 
-            final_grad = final_grad / (
-                final_grad.abs().mean(
-                    dim=(1, 2, 3),
-                    keepdim=True
-                ) + 1e-12
+            momentum = (
+                self.decay * momentum +
+                grad
             )
 
-            adv = adv + self.alpha * final_grad.sign()
+            adv = adv + (
+                self.alpha *
+                momentum.sign()
+            )
 
-            adv = self.project(x, adv)
+            adv = self.project(
+                x,
+                adv
+            )
+
+        return adv.detach()
+
+
+class NAMEA_PGD(NAMEA_Base):
+
+    def attack(self, x, y):
+
+        x = x.detach().to(
+            self.device
+        )
+
+        y = y.detach().to(
+            self.device
+        )
+
+        if self.random_start:
+
+            adv = x + torch.empty_like(
+                x
+            ).uniform_(
+                -self.eps,
+                self.eps
+            )
+
+            adv = torch.clamp(
+                adv,
+                0.0,
+                1.0
+            )
+
+        else:
+
+            adv = x.clone().detach()
+
+        for _ in range(self.steps):
+
+            grad = self.compute_namea_gradient(
+                adv,
+                x,
+                y
+            )
+
+            adv = adv + (
+                self.alpha *
+                grad.sign()
+            )
+
+            adv = self.project(
+                x,
+                adv
+            )
 
         return adv.detach()
