@@ -51,7 +51,7 @@
 | 6  | k-Nearest Output Profiles   | KNOP         | DES       | Decision space |
 | 7  | k-Nearest Oracle-Eliminate  | KNORAE       | DES       | Feature space | 
 | 8  | k-Nearest Oracle Union      | KNORAU       | DES       | Feature space | 
-| 9  | Dynamic Uncertainty-based Selection | DUS  | Engineering Applications of Artificial Intelligence (2024) | None  |
+| 9  | META-DES                    | META-DES     | DES       | None  |
 | 10 | Class-specified DEL         | CP-DEL       | Knowledge-Based Systems (2025)| None | 
 
 ### Base models (ImageNet-1000)
